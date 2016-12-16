@@ -1,6 +1,7 @@
 """
 Training an SVM model
 """
+# comentario
 import numpy as np
 import os
 from Get_Data import get
