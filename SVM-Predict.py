@@ -1,6 +1,7 @@
 """
 Predicting the results of our SVM Model
 """
+#Creo que éste no tiene código para multi-core processing
 
 import numpy as np
 from Get_Data import get
