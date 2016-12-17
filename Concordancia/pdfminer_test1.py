@@ -5,6 +5,9 @@ Created on Fri Dec 16 18:01:02 2016
 @author: M15169
 """
 
+# Source of function:
+#   http://stackoverflow.com/questions/26494211/extracting-text-from-a-pdf-file-using-pdfminer-in-python
+
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
