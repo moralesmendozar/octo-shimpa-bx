@@ -120,6 +120,8 @@ tfidf_setting = TfidfVectorizer(encoding='utf-8', strip_accents='unicode',
                                 use_idf = True, min_df=0)
 print 'getting tfidf_matrix() ...'                            
 tfidf_matrix = tfidf_setting.fit_transform(docs_collection)
+terms= tfidf_setting.get_feature_names()
+
 print '------------------------------------------'
 print 'this is the tfidf_matrix: '
 print ''
