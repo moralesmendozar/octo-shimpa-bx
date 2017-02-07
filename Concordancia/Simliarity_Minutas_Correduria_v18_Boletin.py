@@ -176,7 +176,7 @@ def import_txt(n,path):
     boletin = eliminar_puntuacion(boletin)
     docs_collection.append(boletin)
     #analistas.append(pathin)
-    analistas.append("Boletin "+ str(n))
+    analistas.append("Boletin")
     
     #Obtener corredurías, ir actualizando esta lista
     corr=["Banorte","BMX","Credit Suisse","Deutsche Bank","Barclays"]
