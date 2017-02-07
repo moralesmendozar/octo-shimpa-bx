@@ -1,0 +1,30 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Feb 07 12:53:05 2017
+
+@author: M15169
+"""
+#Correr primero el código de Simliarity_minutas... para que no haya problemas de funciones
+#from nltk.stem.snowball import SnowballStemmer
+
+path = "C:/Users/M15169/Documents/DerRuediger/comunicacion_Bx/CorreduriasYminutas/"
+pathin = path+"minuta"+ str(35) + ".pdf"
+
+minuta = convert_pdf_to_txt(pathin) #sin parallell
+minuta = quitar_acentos(minuta)
+minuta = a_minusculas(minuta)
+minuta = eliminar_puntuacion(minuta)
+termsi = tokenizacion(minuta)
+termkaon = termsi[30]
+SnowballStemmer("spanish").stem(termkaon) 
+
+for i in range(len(termsi)) :
+    try:
+        term = termsi[i]
+        termsii = SnowballStemmer("spanish").stem(term)
+    except:
+        print "i mistake = ", i
+        print "terms[i] = ", termsi[i]
+        continue
+
+
