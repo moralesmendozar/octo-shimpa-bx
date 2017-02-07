@@ -292,13 +292,17 @@ def get_distances(matrix,analistas):
     return distances
 
 
-def graficar(dic):
+def graficar(dic,min_list):
     plotslist = []
     #print 'dic = ', dic
     n=len(dic)  #es el número de minutas a estudiar
-    #print 'n = ', n
+    
     #Para el eje y (fechas/minutas)
-    fechas=[x+1 for x in range(0,n)]  #es de 1 al número de minutas a estudiar
+    fechas =min_list
+    #fechas=[x+1 for x in range(0,n)]  #es de 1 al número de minutas a estudiar
+    
+    
+    
     #Obtener lista de métricas
     dist=dic[0].keys()
     
@@ -309,6 +313,7 @@ def graficar(dic):
         a=dic[p]['cosine'].keys()
         list_b.extend(a)
         list_a=set(list_b)
+        
     print 'list_a = ', list_a
     #Reorganizar diccionario para graficar mas facil
     dic_graf= {d: {a:[] for a in list_a} for d in dist}
@@ -331,22 +336,29 @@ def graficar(dic):
         # Para hacer plots independientes
         fig = figure()        
         #plt.figure(plotcounter)
+        
         print ' dic_graf[d].values() = ', dic_graf[d].values()
         countcolor = 0
         for k in dic_graf[d].values():
             #_ = scatter(fechas,k,color=colors[countcolor])
             _ = scatter(fechas,k,color=colors.pop())
-            countcolor = countcolor + 1
-        legend(dic_graf[d].keys())
+            #countcolor = countcolor + 1
+        legend(dic_graf[d].keys(),bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        #legend(dic_graf[d].keys(),(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        
+        #Para mover la leyenda
+        #legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        #legend(loc="best", bbox_to_anchor=(1,1))
+        
+        
         ylabel(d)
-        xlabel('Fechas')
+        xlabel('Fecha minutas')
         
         plotslist.append(fig)
         plotcounter = plotcounter + 1
         #plt.show()   
     return plotslist
     print "Done"
-    
 
 
 #Para correr todas las funciones. Poner rango de minutas.
