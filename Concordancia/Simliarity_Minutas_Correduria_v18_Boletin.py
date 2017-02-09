@@ -385,7 +385,7 @@ def todo(rangeOfMinutas,path):
 #    print 'graph_list:'
 #    print graph_list
 #    print 'done printing praph_list'
-    graphs = graficar(graph_list)
+    graphs = graficar(graph_list,rangeOfMinutas)
 #    print('printing graphs.... ')
 #    print graphs
 #    print('printed graphs.')
