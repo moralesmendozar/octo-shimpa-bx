@@ -117,27 +117,28 @@ parameters  beta                //Intertemporal discount rate
 //Calibration (borrowed from GM p.18-19)
     //Principal parameters
         //Deep Parameters
-beta = 0.92;									
-sigma = 1;										
-alpha = 0.3372;	
-eta = 0.9;								
-epsilon = 6;									
-phi = 3;										
-theta = 0.75;									
-kappa=0.02;                                        
+                        // bischerige Werte:
+beta = 0.96;            // 0.99 trim,  0.96 anual							
+sigma = 1;				// 1						
+alpha = 0.3372;         // 0.3372
+eta = 0.9;            	// 0.9	//sensible al 1			
+epsilon = 6;            // 6									
+phi = 3;				// 3					
+theta = 0.75;			// 0.75						
+kappa = 0.02;             // 0.02                    
 
 
-tay_nat=1;
-tay_rho=0.42;
-tay_pi=2.133;
-tay_gap=1.021;
-rho_i=0.42;
+tay_nat = 1;              // 1
+tay_rho = 0.42;           // 0.42
+tay_pi = 2.133;           // 2.133
+tay_gap = 1.021;          // 1.021
+rho_i = 0.42;             // 0.42
 
 
-rho_a = 0.9;
-rho_a_w = 0.9;
-a_shock_correl = 0.20;
-rho=-log(beta);
+rho_a = 0.9;            // 0.9
+rho_a_w = 0.9;          // 0.9
+a_shock_correl = 0.20;  // 0.20
+rho=-log(beta);         
 
 
     //Derived parameters
@@ -203,7 +204,7 @@ r_w = phi_pi_w*pi_w(+1) + phi_a_w*a_w+shock_r+news_shock_r(-1);            //For
 a = rho_a*a(-1) + eps_a + a_shock_correl*(eps_a_w);                        //Home's technology process
 pi_H = beta*EXPECTATION(0)(pi_H(+1)) + phi_NKPC*x;                         //Home's Phillips curve. Eq(40)
 x = EXPECTATION(0)(x(+1)) 
-         - (omega/sigma)*(r - EXPECTATION(0)(pi_H(+1)) - rnat);            //Home's dynamic IS curve. Eq(41)     
+         - (omega/sigma)*(ii - EXPECTATION(0)(pi_H(+1)) - rnat);            //Home's dynamic IS curve. Eq(41)     
 rnat = -((sigma*(1+phi)*(1-rho_a))/(sigma + phi*omega))*a                                   
 		 - phi*BigTheta*(y_w(+1) - y_w);                                   //Natural rate of interest. Eq(41)
 
@@ -217,9 +218,13 @@ rnat = -((sigma*(1+phi)*(1-rho_a))/(sigma + phi*omega))*a
 //    i=ii+rho+shadow_price;                                                 //Interest rate ZLB (SS is rho)
 
 r=tay_nat*rnat+tay_pi*pi+tay_gap*x;                                        //Taylor rule with natural rate
+//r=tay_nat*rnat+tay_pi*pi;                                                 //sin Brecha
     ii=rho_i*ii(-1)+(1-rho_i)*r;                                           //Smoothing process
     i=ii+rho+shadow_price;                                                 //Interest rate ZLB (SS is rho)
 
+// r= rho  % SS, fixed interest rate
+// ii = r   %sin smoothing
+// i = ii
 
 //*************************************************************************//
     //Market clearing
@@ -284,8 +289,8 @@ steady;
 //*************************************************************************//
 //Define shocks to the economy
 shocks;
-var shock_r = 0.025;
-var news_shock_r = 0.025;
+var shock_r=0.025;          // 0.025
+var news_shock_r=0.025;
 
 
 
@@ -363,8 +368,8 @@ end
 
 
 shocks;
-var shock_r = 0.025;
-var news_shock_r = 0.025;
+var shock_r=0.025;          //0.025
+var news_shock_r=0.025;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Standard deviation of shadow price shocks is set to one: %
@@ -394,8 +399,8 @@ shock_matrix = zeros(options_.irf,M_.exo_nbr); %create shock matrix with number 
 //Canales de choque (prende o apaga segun lo que quieras modelar)
 //documentar bien<-por hacer
 
-shock_matrix(1,strmatch('news_shock_r',M_.exo_names,'exact')) = 25; %set news shock to 1 (use any shock size you want)
-shock_matrix(1,strmatch('shock_r',M_.exo_names,'exact')) = 10; %(1) periods later use counteracting shock of -1
+shock_matrix(1,strmatch('news_shock_r',M_.exo_names,'exact')) = 25; %set news shock to 1 (use any shock size you want)  //25
+shock_matrix(1,strmatch('shock_r',M_.exo_names,'exact')) = 10; %(1) periods later use counteracting shock of -1  //25
 shock_matrix(3,strmatch('eps_a_w',M_.exo_names,'exact')) = 0; 
 shock_matrix(1,strmatch('eps_a',M_.exo_names,'exact')) = 0; 
 
@@ -411,7 +416,7 @@ shock_matrix(1,strmatch('epsilon_shadow_6',M_.exo_names,'exact')) = 1;
 shock_matrix(1,strmatch('epsilon_shadow_7',M_.exo_names,'exact')) = 1; 
 shock_matrix(1,strmatch('epsilon_shadow_8',M_.exo_names,'exact')) = 1; 
 shock_matrix(1,strmatch('epsilon_shadow_9',M_.exo_names,'exact')) = 1; 
-*/
+  */
 
 
 y2 = simult_(initial_condition_states,oo_.dr,shock_matrix,1);
@@ -419,32 +424,41 @@ y_IRF = y2(:,M_.maximum_lag+1:end)-repmat(oo_.dr.ys,1,options_.irf); %deviation 
 
 
 // manually select variables for figure
-figure
+figure(1)
 subplot(2,1,1)
 plot(y_IRF(strmatch('r_w',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
-title('Tasa Interés FED');
+title('Tasa Interés FED', 'FontSize', 18);
+ylabel('Desviación Porcentual')
 
 subplot(2,1,2)
-plot(-log(beta)*100+y_IRF(strmatch('a',M_.endo_names,'exact'),:),'LineWidth',2,'LineStyle',':');
-hold on
-plot(-log(beta)*100+max(0,y_IRF(strmatch('i',M_.endo_names,'exact'),:)),'LineWidth',2,'Marker','x'); % use strmatch to select values
-hold on 
 plot(y_IRF(strmatch('r',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
 hold on
 plot(y_IRF(strmatch('ii',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
-L=legend('$i_{ss}$','$i$','$r$','$\bar{r}$');
-set(L,'Interpreter','Latex');
-title('Tasa de Interés');
+plot(1:5,zeros(1,5),'k-','LineWidth',0.5);
+L=legend('Taylor','Suavizada');
+set(L,'Interpreter','Latex', 'FontSize', 12);
+title('Tasa de Interés', 'FontSize', 18);
+ylabel('Desviación Porcentual')
 
-figure
+
+figure(2)
+plot(-log(beta)*100+y_IRF(strmatch('a',M_.endo_names,'exact'),:),'LineWidth',2,'LineStyle',':');
+hold on
+plot(-log(beta)*100+max(0,y_IRF(strmatch('i',M_.endo_names,'exact'),:)),'LineWidth',2,'Marker','x'); % use strmatch to select values
+L=legend('$i_{ss}$','$i_{ZLB}$');
+set(L,'Interpreter','Latex', 'FontSize', 16);
+title('Respuesta Banco Central Nacional', 'FontSize', 18);
+axis([1 5 0 20])
+
+
+figure(3)
 subplot(2,2,1)
 plot(y_IRF(strmatch('pi_H',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
 hold on
 plot(y_IRF(strmatch('pi',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
 L=legend('$\pi_{H}$','$\pi$');
-set(L,'Interpreter','Latex');
-title('Inflación');
-
+set(L,'Interpreter','Latex', 'FontSize', 10);
+title('Inflación', 'FontSize', 12);
 
 subplot(2,2,2)
 plot(y_IRF(strmatch('e',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
@@ -453,17 +467,22 @@ plot(y_IRF(strmatch('q',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
 hold on
 plot(y_IRF(strmatch('s',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
 L=legend('e','q','s');
-set(L,'Interpreter','Latex');
-title('Tipo de cambio/Términos de intercambio');
+set(L,'Interpreter','Latex', 'FontSize', 10);
+title('Tipo de cambio/Términos de intercambio', 'FontSize', 11);
 
 subplot(2,2,3)
 plot(y_IRF(strmatch('x',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
-title('Brecha del Producto');
+title('Brecha del Producto', 'FontSize', 12);
 
 subplot(2,2,4)
 plot(y_IRF(strmatch('cpi_level',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
 hold on
 plot(y_IRF(strmatch('p_h',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
 L=legend('CPI','$p_H$');
-set(L,'Interpreter','Latex');
-title('Nivel de precios')
+set(L,'Interpreter','Latex', 'FontSize', 10);
+title('Nivel de precios', 'FontSize', 12)
+
+%figure(4)
+%subplot(1,1,1)
+%plot(y_IRF(strmatch('a_w',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
+%title('Productivity USA', 'FontSize', 18);
