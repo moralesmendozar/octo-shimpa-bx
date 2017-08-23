@@ -1,0 +1,469 @@
+//*************************************************************************//
+% DEFINITIONS:
+% ------------
+% TShadow:  Number of periods we believe the ZLB binds
+% TIRF:     Number of periods for IRF graphs
+% TInitIRF: Number of periods for IRF simulation
+% TSimul:   Number of periods for complete simulation
+% TDrop:    Number of simulation periods to be dropped before plotting
+% condeta: Dummy=1 if eta=1
+
+@#define TShadow = 10   
+@#define TIRF = 10    
+@#define TSimul = 300   
+@#define TDrop = 100    
+
+@#define condeta = 0 
+
+@#if TShadow > TIRF
+	@#define TInitIRF = TShadow
+@#else
+	@#define TInitIRF = TIRF
+@#endif
+//*************************************************************************//
+
+
+
+//*************************************************************************//
+//***************************NKSOE-ZLB-GM**********************************//
+//*************************************************************************//
+
+
+
+
+//*************************************************************************//
+//*************************************************************************//
+//Variables
+var y_w         //Output world economy
+    mc_w        //Deviation marginal cost world economy
+    pi_w        //Deviation inflation target world economy
+    r_w         //Interest rate world economy
+    a_w         //Productivty world economy
+    a           //Productivty
+    x           //Output gap
+    p_h         //Domestic price index
+    pi_H        //Domestic inflation (should be interpreted as deviation from inflation target)
+	cpi_level   //CPI
+    pi          //Inflation (should be interpreted as deviation from inflation target)
+    rnat        //Natural interest rate
+    r           //Desired interest rate (log deviation)
+    y           //Output
+    yflex       //Output under flexible prices
+    s           //Terms of trade
+	q           //Real exchange rate
+	e           //Nominal exchange rate
+    ii          //Interest rate (smoothing process)
+	i;          //Nominal Interest Rate
+//*************************************************************************//
+//*************************************************************************//
+
+
+	 
+//*************************************************************************//
+//*************************************************************************//
+//Exogenous variables	
+varexo  eps_a_w            //
+        eps_a              //
+        shock_r            //
+        news_shock_r;      //
+
+    //Shadow price shocks
+@#for index in 0:( TShadow - 1 )
+	varexo epsilon_shadow_@{index};
+	var LAG0_shadow_@{index};
+	@#for offset in 1:index
+		var LAG@{offset}_shadow_@{index};
+	@#endfor
+	@#define offset = 10000000000
+@#endfor
+@#define index = 10000000000
+//*************************************************************************//
+//*************************************************************************//
+
+
+
+//*************************************************************************//
+//*************************************************************************//
+//Structural parameters
+parameters  beta                //Intertemporal discount rate
+            sigma               //Intertemporal consumption elastiticy 
+            alpha               //Proportion of Home and Foreign goods in the consumption bundle. Degree of 'openness' in the Home economy. Eq(2)
+            eta                 //Elast. of sub. between Home and Foreign goods. Eq(2)
+            epsilon             //Dixit-Stiglitz parameter for within-sector consumption. Eq(4)
+            phi                 //Labour disutility parameter. Implies a labor supply elasticity of 1/phi. Eq(7)
+            theta               //Calvo Probability. Duration of prices in avg 1/(1-theta)
+            kappa               //Fraction of the bundle exported that “melts away" in the trade process
+            rho_i               //Smoothing parameter AR interest rate
+            rho_a               //Smoothing parameter AR Home PTY
+            rho_a_w             //Smoothing parameter world PTY
+            a_shock_correl      //Correlation between the domestic and world shocks
+            rho                 //Time discount rate =log(beta).
+            alpha_p             //Proportion of the foreign and home prices in the price index.
+            lambda              //Coefficient on marginal cost in the Phillips Curve
+            BigTheta            //Note to 39
+            omega               //Note to 25  
+            phi_NKPC            //Real rigidity. Note to 40
+            phi_a_w             //Parameter pty in Taylor for World. Eq(51)
+            phi_pi_w            //Parameter inflation in Taylor for World. For consistency of Blanchard-Kahn phi_pi_w>1.
+            BigPhi_a            //Eq(27)
+            BigGamma            //p.13 
+            PHI_PHP             //
+            PHI_ss2             //
+            tay_nat
+            tay_rho
+            tay_pi
+            tay_gap;
+
+//Calibration (borrowed from GM p.18-19)
+    //Principal parameters
+        //Deep Parameters
+beta = 0.92;									
+sigma = 1;										
+alpha = 0.3372;	
+eta = 0.9;								
+epsilon = 6;									
+phi = 3;										
+theta = 0.75;									
+kappa=0.02;                                        
+
+
+tay_nat=1;
+tay_rho=0.42;
+tay_pi=2.133;
+tay_gap=1.021;
+rho_i=0.42;
+
+
+rho_a = 0.9;
+rho_a_w = 0.9;
+a_shock_correl = 0.20;
+rho=-log(beta);
+
+
+    //Derived parameters
+alpha_p=alpha/(alpha+(1-alpha)*(1-kappa)^(1-eta));
+lambda = (1-(beta*theta))*(1-theta)/theta;
+
+@#if condeta
+    PHI_PHP=1;
+@#else
+    PHI_PHP=(1-alpha+alpha*(1-kappa)^(eta-1))^(1/(eta-1));
+@#endif	
+
+PHI_ss2=(1-alpha)*PHI_PHP^(1/sigma-eta)+alpha/(1-kappa);
+omega=sigma*eta+(1-sigma*eta)*(1-alpha_p)*((1-alpha/(1-kappa))*PHI_ss2^(-1));
+BigTheta = sigma*(1-omega)/(sigma + phi*omega);
+phi_NKPC = lambda*(phi + (sigma/omega));
+phi_a_w = -(sigma*(1+phi)*(1-rho_a_w)) / (phi+sigma);
+phi_pi_w = 1.01;
+BigPhi_a = (1-alpha)/omega;
+BigGamma = omega*(1+phi)/(sigma+phi*omega);
+
+
+//*************************************************************************//
+//*************************************************************************//
+
+
+
+//*************************************************************************//
+//**********************************MODEL**********************************//
+//*************************************************************************//
+model(linear);
+
+
+
+@#for index in 0:( TShadow - 1 )
+    LAG0_shadow_@{index} = epsilon_shadow_@{index};
+	@#for offset in 1:index
+		LAG@{offset}_shadow_@{index}( 0 ) = LAG@{offset-1}_shadow_@{index}( -1 );
+	@#endfor
+	@#define offset = 10000000000
+@#endfor
+@#define index = 10000000000
+	
+#shadow_price = 0
+@#for index in 0:( TShadow - 1 )
+	+ LAG@{index}_shadow_@{index}( 0 )
+@#endfor
+@#define index = 10000000000
+;
+
+
+//*************************************************************************//
+    //World's equations
+a_w = rho_a_w*a_w(-1) + eps_a_w;                                           //Foreign's technology process
+y_w = EXPECTATION(0)(y_w(+1)) - (r_w - EXPECTATION(0)(pi_w(+1)))/sigma;    //Foreign's Euler eqn. Eq(22)
+mc_w = (sigma + phi)*y_w - (1+phi)*a_w;                                    //Foreign's marginal cost. Eq(32)
+pi_w = beta*EXPECTATION(0)(pi_w(+1)) + lambda*mc_w;                        //Foreign's Phillips curve. Eq(31)
+r_w = phi_pi_w*pi_w(+1) + phi_a_w*a_w+shock_r+news_shock_r(-1);            //Foreign's Taylor rule. Eq(51) 
+
+
+//*************************************************************************//
+    //Home's equations
+a = rho_a*a(-1) + eps_a + a_shock_correl*(eps_a_w);                        //Home's technology process
+pi_H = beta*EXPECTATION(0)(pi_H(+1)) + phi_NKPC*x;                         //Home's Phillips curve. Eq(40)
+x = EXPECTATION(0)(x(+1)) 
+         - (omega/sigma)*(r - EXPECTATION(0)(pi_H(+1)) - rnat);            //Home's dynamic IS curve. Eq(41)     
+rnat = -((sigma*(1+phi)*(1-rho_a))/(sigma + phi*omega))*a                                   
+		 - phi*BigTheta*(y_w(+1) - y_w);                                   //Natural rate of interest. Eq(41)
+
+    //Home's monetary policy
+//pi = 0;                                                                  //Strict inflation targeting (CIT)
+//e = 0;                                                                   //Exchange rate peg (PEG)
+//pi_H = 0;                                                                //Domestic inflation targeting (DIT)
+
+//r = tay_rho*r(-1)+ tay_pi*pi + tay_gap*x;                                  //Taylor rule desired interest rate r 
+//    ii=r;                                                                  //No further smoothing 
+//    i=ii+rho+shadow_price;                                                 //Interest rate ZLB (SS is rho)
+
+r=tay_nat*rnat+tay_pi*pi+tay_gap*x;                                        //Taylor rule with natural rate
+    ii=rho_i*ii(-1)+(1-rho_i)*r;                                           //Smoothing process
+    i=ii+rho+shadow_price;                                                 //Interest rate ZLB (SS is rho)
+
+
+//*************************************************************************//
+    //Market clearing
+y = y_w + (omega/sigma)*s;                                                 //Market clearing. Eq(25)
+
+
+//*************************************************************************//
+    //Other macroeconomic variables and identities
+yflex = BigGamma*a + BigTheta*y_w;                                         //Home's flexprice output deviation. Eq(39)
+y = yflex + x;                                                             //Definition of Home output. (p. 13)
+pi = pi_H + alpha_p*(s - s(-1));                                           //Home CPI inflation. Eq(11)
+q = (1-alpha_p)*s;                                                         //Real exchange rate. Eq(13)
+s - s(-1) = e - e(-1) + pi_w - pi_H;                                       //Differenced version of s=e+p_F_w-p_H. Eq(12)
+p_h = p_h(-1) + pi_H;                                                      //An identity to pin down the relative price of home goods
+cpi_level = cpi_level(-1) + pi;                                            //  "    "      "   "   "   "  consumer price level
+
+end;
+//*************************************************************************//
+//*************************************************************************//
+
+
+
+//*************************************************************************//
+//Initial values (SS)
+initval;
+y_w                  	=	0	;
+mc_w                 	=	0	;
+pi_w                 	=	0	;
+r_w                  	=	0	;
+a_w                  	=	0	;
+a                    	=	0	;
+x                    	=	0	;
+p_h                  	=	0	;
+pi_H                 	=	0	;
+cpi_level            	=	0	;
+pi                   	=	0	;
+rnat                 	=	0	;
+r                    	=	0	;
+y                    	=	0	;
+yflex                	=	0	;
+s                    	=	0	;
+q                    	=	0	;
+e                    	=	0	;
+ii                      =   0   ;
+i                       =   rho ;
+end;
+//*************************************************************************//
+
+
+//*************************************************************************//
+//Check determinacy of the model
+check;
+//*************************************************************************//
+
+
+//*************************************************************************//
+//Find steady state (SS)
+steady; 
+//*************************************************************************//
+
+
+//*************************************************************************//
+//Define shocks to the economy
+shocks;
+var shock_r = 0.025;
+var news_shock_r = 0.025;
+
+
+
+@#for index in 0:( TShadow - 1 )
+	var epsilon_shadow_@{index} = 1;
+@#endfor
+@#define index = 10000000000
+
+end;
+//*************************************************************************//
+
+
+
+//*************************************************************************//
+//*************************************************************************//
+//Simulation
+t0 = tic;
+stoch_simul( order = 1, irf = @{TInitIRF}, noprint, nograph, nomoments, periods=0 ) r i y  ii r_w pi pi_H e q p_h cpi_level ;
+
+ZLBData = INITIAL_CHECKS( @{TShadow}, @{TInitIRF}, 'i', var_list_ ); //modifyable 'i'
+display( sprintf( '\n%s', 'Computation time for set-up and initial feasibility checks:' ) ); toc( t0 ); 
+t1 = tic;
+[ IRF_, IRF_CONS_ ] = STEADYSTATE_IRF_CONS( ZLBData );
+display( sprintf( '\n%s', 'Additional computation time for IRFs:' ) ); toc( t1 ); 
+t2 = tic;
+[ SIMU_, SIMU_CONS_ ] = SIMU_CONS(  ZLBData, @{TSimul} );
+display( sprintf( '\n%s', 'Additional computation time for simulations:' ) ); toc( t2 );
+/*
+%%%%%%%%%%%%%%%%%%%%%
+% Generate Figures: %
+% ----------------- %
+%%%%%%%%%%%%%%%%%%%%%
+
+exovars( 1, 1:( size( M_.exo_names, 1 ) - @{TShadow} ) ) = cellstr( M_.exo_names( 1:( size( M_.exo_names, 1 ) - @{TShadow} ), : ) );
+vars( 1, 1:size( var_list_ ) ) = cellstr( var_list_( 1:size( var_list_ ), : ) );
+
+xx =( 0:@{TIRF}-1 )';
+for exovar = exovars
+    @#define number = 0
+    for var = vars
+        @#define number = number +1
+        figure( 'Name', cell2mat( [ 'IRF: ' var ', Shock: ' exovar ] ) );
+        hold on;
+        plot( xx, IRF_.( cell2mat( [ var '_' exovar ] ) )( 1:@{TIRF} ), '-k', 'MarkerSize', 4, 'LineWidth', 1.5 );
+        plot( xx, IRF_CONS_.( cell2mat( [ var '_' exovar ] ) )( 1:@{TIRF} ), '--k', 'MarkerSize', 4, 'LineWidth', 1.5 );
+        plot( xx, zeros( @{TIRF} )', '-k', 'MarkerSize', 2, 'LineWidth', 0.5 );
+        set( gca, 'PlotBoxAspectRatio', [ 1 2 1 ] );  
+        set( gca, 'fontsize', 25 ); 
+        title(var);
+        axis tight;
+        hold off;
+    end
+end
+
+yy =( 0:@{TSimul}-1-@{TDrop} )';
+@#define number = 0
+for var = vars
+	@#define number = number +1
+	figure( 'Name', cell2mat( [ 'Simulation: ' var ] ) );
+	hold on;
+	plot( yy, SIMU_.( cell2mat( [ var  ] ) )( 1:( @{TSimul}-@{TDrop} ) ), '-k', 'MarkerSize', 4, 'LineWidth', 1.5 );
+	plot( yy, SIMU_CONS_.( cell2mat( [ var ] ) )( 1:( @{TSimul}-@{TDrop} ) ), '--k', 'MarkerSize', 4, 'LineWidth', 1.5 );
+	plot( yy, zeros( @{TSimul}-@{TDrop} ), '-k', 'MarkerSize', 2, 'LineWidth', .5 );
+	set( gca, 'PlotBoxAspectRatio', [ 2.5 1 1 ] );  
+	set( gca, 'fontsize', 25 ); 
+    title( var);
+	axis tight;
+	hold off;
+end 
+*/
+//*************************************************************************//
+//*************************************************************************//
+
+
+
+
+shocks;
+var shock_r = 0.025;
+var news_shock_r = 0.025;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Standard deviation of shadow price shocks is set to one: %
+% -------------------------------------------------------- %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+@#for index in 0:( TShadow - 1 )
+	var epsilon_shadow_@{index} = 1;
+@#endfor
+@#define index = 10000000000
+
+end;
+
+stoch_simul(irf=5);
+forecast;
+
+
+
+//************ The following line generate the IRFs to a "pure" TFP news shock, i.e. the anticipated shock is 
+//************ counteracted by an opposite surprise shock when it is supposed to realize
+
+//initialize IRF generation
+initial_condition_states = repmat(oo_.dr.ys,1,M_.maximum_lag);
+shock_matrix = zeros(options_.irf,M_.exo_nbr); %create shock matrix with number of time periods in colums
+
+// set shocks for pure news 
+//Canales de choque (prende o apaga segun lo que quieras modelar)
+//documentar bien<-por hacer
+
+shock_matrix(1,strmatch('news_shock_r',M_.exo_names,'exact')) = 25; %set news shock to 1 (use any shock size you want)
+shock_matrix(1,strmatch('shock_r',M_.exo_names,'exact')) = 10; %(1) periods later use counteracting shock of -1
+shock_matrix(3,strmatch('eps_a_w',M_.exo_names,'exact')) = 0; 
+shock_matrix(1,strmatch('eps_a',M_.exo_names,'exact')) = 0; 
+
+
+/*
+shock_matrix(1,strmatch('epsilon_shadow_0',M_.exo_names,'exact')) = 1; 
+shock_matrix(1,strmatch('epsilon_shadow_1',M_.exo_names,'exact')) = 1; 
+shock_matrix(1,strmatch('epsilon_shadow_2',M_.exo_names,'exact')) = 1; 
+shock_matrix(1,strmatch('epsilon_shadow_3',M_.exo_names,'exact')) = 1; 
+shock_matrix(1,strmatch('epsilon_shadow_4',M_.exo_names,'exact')) = 1; 
+shock_matrix(1,strmatch('epsilon_shadow_5',M_.exo_names,'exact')) = 1; 
+shock_matrix(1,strmatch('epsilon_shadow_6',M_.exo_names,'exact')) = 1; 
+shock_matrix(1,strmatch('epsilon_shadow_7',M_.exo_names,'exact')) = 1; 
+shock_matrix(1,strmatch('epsilon_shadow_8',M_.exo_names,'exact')) = 1; 
+shock_matrix(1,strmatch('epsilon_shadow_9',M_.exo_names,'exact')) = 1; 
+*/
+
+
+y2 = simult_(initial_condition_states,oo_.dr,shock_matrix,1);
+y_IRF = y2(:,M_.maximum_lag+1:end)-repmat(oo_.dr.ys,1,options_.irf); %deviation from steady state
+
+
+// manually select variables for figure
+figure
+subplot(2,1,1)
+plot(y_IRF(strmatch('r_w',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
+title('Tasa Interés FED');
+
+subplot(2,1,2)
+plot(-log(beta)*100+y_IRF(strmatch('a',M_.endo_names,'exact'),:),'LineWidth',2,'LineStyle',':');
+hold on
+plot(-log(beta)*100+max(0,y_IRF(strmatch('i',M_.endo_names,'exact'),:)),'LineWidth',2,'Marker','x'); % use strmatch to select values
+hold on 
+plot(y_IRF(strmatch('r',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
+hold on
+plot(y_IRF(strmatch('ii',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
+L=legend('$i_{ss}$','$i$','$r$','$\bar{r}$');
+set(L,'Interpreter','Latex');
+title('Tasa de Interés');
+
+figure
+subplot(2,2,1)
+plot(y_IRF(strmatch('pi_H',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
+hold on
+plot(y_IRF(strmatch('pi',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
+L=legend('$\pi_{H}$','$\pi$');
+set(L,'Interpreter','Latex');
+title('Inflación');
+
+
+subplot(2,2,2)
+plot(y_IRF(strmatch('e',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
+hold on
+plot(y_IRF(strmatch('q',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
+hold on
+plot(y_IRF(strmatch('s',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
+L=legend('e','q','s');
+set(L,'Interpreter','Latex');
+title('Tipo de cambio/Términos de intercambio');
+
+subplot(2,2,3)
+plot(y_IRF(strmatch('x',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
+title('Brecha del Producto');
+
+subplot(2,2,4)
+plot(y_IRF(strmatch('cpi_level',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
+hold on
+plot(y_IRF(strmatch('p_h',M_.endo_names,'exact'),:),'LineWidth',2,'Marker','x');
+L=legend('CPI','$p_H$');
+set(L,'Interpreter','Latex');
+title('Nivel de precios')
